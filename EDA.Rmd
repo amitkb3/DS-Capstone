@@ -1,0 +1,68 @@
+---
+title: "Ngram EDA for SwiftKey sample data"
+author: "Dave Hurst"
+date: "Saturday, November 15, 2014"
+output: html_document
+---
+
+```{r}
+library(tm)
+library(stringr)
+library(RWeka)
+source("text_utils.R")
+
+
+LANG <- "en_US"
+#ROOT_DIR <- "C:/NO_BACKUP/final"
+ROOT_DIR <- "C:/NO_BACKUP/small"
+
+ptime0 <- proc.time()
+fdir <- sprintf("%s/%s", ROOT_DIR, LANG)
+corpus <- Corpus(DirSource(fdir, encoding="UTF-8"), readerControl = list(language=LANG))
+ptime1 <- proc.time()
+ptime1-ptime0
+
+corpus <- tm_map(corpus, content_transformer(function(x) gsub("[^[:print:]]", " ", x))) # remove unprintable characters
+corpus <- tm_map(corpus, content_transformer(tolower))
+corpus <- tm_map(corpus, content_transformer(removeNumbers))
+corpus <- tm_map(corpus, content_transformer(function(x) gsub("[^a-z]{2,}", " ", x))) # remove repeated non_letters
+corpus <- tm_map(corpus, content_transformer(function(x) gsub("[()]", " ", x))) # remove parens
+corpus <- tm_map(corpus, content_transformer(function(x) gsub("^[^a-z]", " ", x))) # remove starting punctuation
+corpus <- tm_map(corpus, content_transformer(function(x) gsub("n't", " not", x))) # expand "not"
+corpus <- tm_map(corpus, content_transformer(function(x) gsub("'s", " is", x))) # expand "is"
+corpus <- tm_map(corpus, content_transformer(function(x) gsub("i'm", "i am", x))) # expand "I am"
+corpus <- tm_map(corpus, content_transformer(function(x) gsub("'re", " are", x))) # expand "are"
+corpus <- tm_map(corpus, content_transformer(function(x) gsub("[\\/_]|-", " ", x))) # remove some punctuation
+corpus <- tm_map(corpus, content_transformer(stripWhitespace))
+
+tdm <- TermDocumentMatrix(corpus)
+
+```
+Define the profane words -- use your imagination
+```{r ,echo=FALSE}
+profane <- c (findTerms(tdm, "fuck")
+              ,findTerms(tdm, "cock.*suck")
+              ,findTerms(tdm, "cunt")
+              ,findTerms(tdm, "nigge*r|nigga")
+              ,findTerms(tdm, "^twat") )
+```
+```{r}
+corpus <- tm_map(corpus, removeWords, profane)
+
+eff <- numeric()
+                                     ptime0 <- proc.time()
+eff[1] <- eda.by.ngram (corpus, 1);  ptime1 <- proc.time()
+                                     ptime1-ptime0
+eff[2] <- eda.by.ngram (corpus, 2);  ptime2 <- proc.time()
+                                     ptime2-ptime1
+eff[3] <- eda.by.ngram (corpus, 3);  ptime3 <- proc.time()
+                                     ptime3-ptime2
+eff[4] <- eda.by.ngram (corpus, 4);  ptime3 <- proc.time()
+                                     ptime3-ptime2
+
+plot(eff, type="b")
+eff
+```
+
+
+
